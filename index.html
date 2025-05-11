@@ -45,9 +45,47 @@
       margin-top: 2em;
       display: none;
     }
-    .calendar-entry {
-      padding: 0.5em;
-      border-bottom: 1px solid #ccc;
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 1em;
+    }
+    .day-cell {
+      background: #ffeef0;
+      border: 1px solid #f8cdd0;
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+      min-height: 60px;
+      position: relative;
+      cursor: pointer;
+    }
+    .stamp {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+    }
+    .popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border: 2px solid #f8cdd0;
+      padding: 1em;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 100;
+    }
+    .popup-close {
+      text-align: right;
+      font-size: 0.9em;
+      cursor: pointer;
+      color: #ff69b4;
     }
   </style>
 </head>
@@ -81,6 +119,11 @@
 
   <button onclick="toggleCalendar()">カレンダーモード切替</button>
   <div id="calendar-view"></div>
+
+  <div id="popup" class="popup">
+    <div class="popup-close" onclick="closePopup()">✖ 閉じる</div>
+    <div id="popup-content"></div>
+  </div>
 
   <script>
     if ('serviceWorker' in navigator) {
@@ -125,7 +168,7 @@
         }, 3000);
       }
 
-      calendarData.push({ date, category, saved });
+      calendarData.push({ date, category, saved, memo });
       document.getElementById("savings-form").reset();
       document.getElementById("date").valueAsDate = new Date();
     });
@@ -133,13 +176,57 @@
     function toggleCalendar() {
       const calendar = document.getElementById("calendar-view");
       calendar.innerHTML = "<h2>カレンダー収支</h2>";
-      calendarData.forEach(entry => {
-        const div = document.createElement("div");
-        div.className = "calendar-entry";
-        div.innerText = `${entry.date}｜${entry.category}｜節約: ${entry.saved}円`;
-        calendar.appendChild(div);
-      });
+
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDay = firstDay.getDay();
+      const totalDays = lastDay.getDate();
+
+      const grid = document.createElement("div");
+      grid.className = "calendar";
+
+      for (let i = 0; i < startDay; i++) {
+        const blank = document.createElement("div");
+        grid.appendChild(blank);
+      }
+
+      for (let day = 1; day <= totalDays; day++) {
+        const cell = document.createElement("div");
+        cell.className = "day-cell";
+        cell.innerText = day;
+
+        const dayString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const entry = calendarData.find(e => e.date === dayString && e.saved > 0);
+
+        if (entry) {
+          const stamp = document.createElement("img");
+          stamp.className = "stamp";
+          stamp.src = entry.stamp || "IMG_20250512_011832.png";
+          stamp.alt = "スタンプ";
+          cell.appendChild(stamp);
+
+          cell.onclick = () => {
+            document.getElementById("popup-content").innerHTML = `
+              <strong>${entry.date}</strong><br>
+              カテゴリ: ${entry.category}<br>
+              節約額: ${entry.saved}円<br>
+              メモ: ${entry.memo}`;
+            document.getElementById("popup").style.display = "block";
+          };
+        }
+
+        grid.appendChild(cell);
+      }
+
+      calendar.appendChild(grid);
       calendar.style.display = calendar.style.display === "none" ? "block" : "none";
+    }
+
+    function closePopup() {
+      document.getElementById("popup").style.display = "none";
     }
   </script>
 </body>
