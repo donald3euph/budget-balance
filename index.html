@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>節約記録アプリ</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#fff0f5">
+  <style>
+    body {
+      font-family: "Hiragino Maru Gothic Pro", sans-serif;
+      background: #fff0f5;
+      color: #333;
+      padding: 1em;
+      max-width: 500px;
+      margin: auto;
+    }
+    h1 {
+      color: #ff69b4;
+      text-align: center;
+    }
+    label, select, input, textarea, button {
+      display: block;
+      width: 100%;
+      margin-top: 0.5em;
+      font-size: 1em;
+    }
+    .record {
+      background: #ffe4e1;
+      border-radius: 8px;
+      padding: 1em;
+      margin-top: 1em;
+    }
+    #reward {
+      background: #ffd700;
+      color: #b22222;
+      text-align: center;
+      font-weight: bold;
+      padding: 0.5em;
+      border-radius: 8px;
+      margin-top: 1em;
+      display: none;
+    }
+    #calendar-view {
+      margin-top: 2em;
+      display: none;
+    }
+    .calendar-entry {
+      padding: 0.5em;
+      border-bottom: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>今日の節約記録</h1>
+  <label>月の予算（円）
+    <input type="number" id="monthly-budget" placeholder="例：30000">
+  </label>
+  <p id="daily-budget-display"></p>
+  <form id="savings-form">
+    <label>日付
+      <input type="date" id="date" required>
+    </label>
+    <label>カテゴリ
+      <select id="category">
+        <option value="食費">食費</option>
+        <option value="遊興費">遊興費</option>
+      </select>
+    </label>
+    <label>出費（円）
+      <input type="number" id="spent" required>
+    </label>
+    <label>メモ
+      <textarea id="memo"></textarea>
+    </label>
+    <button type="submit">記録する</button>
+  </form>
+
+  <div id="reward">節約成功！ごほうびタイム！</div>
+  <div id="records"></div>
+
+  <button onclick="toggleCalendar()">カレンダーモード切替</button>
+  <div id="calendar-view"></div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js').then(() => {
+        console.log('Service Worker Registered');
+      });
+    }
+
+    document.getElementById("date").valueAsDate = new Date();
+
+    let dailyBudget = 1000;
+    let calendarData = [];
+
+    document.getElementById("monthly-budget").addEventListener("input", function() {
+      const monthly = parseInt(this.value);
+      if (!isNaN(monthly)) {
+        dailyBudget = Math.round(monthly / 30);
+        document.getElementById("daily-budget-display").innerText = `1日あたりの予算は約${dailyBudget}円です。`;
+      }
+    });
+
+    document.getElementById("savings-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const date = document.getElementById("date").value;
+      const category = document.getElementById("category").value;
+      const spent = parseInt(document.getElementById("spent").value);
+      const memo = document.getElementById("memo").value;
+      const saved = dailyBudget - spent;
+
+      const record = document.createElement("div");
+      record.className = "record";
+      record.innerHTML = `<strong>${date}</strong><br>
+                          カテゴリ: ${category}<br>
+                          節約額: ${saved}円<br>
+                          メモ: ${memo}`;
+      document.getElementById("records").prepend(record);
+
+      if (saved > 0) {
+        document.getElementById("reward").style.display = "block";
+        setTimeout(() => {
+          document.getElementById("reward").style.display = "none";
+        }, 3000);
+      }
+
+      calendarData.push({ date, category, saved });
+      document.getElementById("savings-form").reset();
+      document.getElementById("date").valueAsDate = new Date();
+    });
+
+    function toggleCalendar() {
+      const calendar = document.getElementById("calendar-view");
+      calendar.innerHTML = "<h2>カレンダー収支</h2>";
+      calendarData.forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "calendar-entry";
+        div.innerText = `${entry.date}｜${entry.category}｜節約: ${entry.saved}円`;
+        calendar.appendChild(div);
+      });
+      calendar.style.display = calendar.style.display === "none" ? "block" : "none";
+    }
+  </script>
+</body>
+</html>
