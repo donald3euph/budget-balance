@@ -102,6 +102,13 @@
       cursor: pointer;
       color: #ff69b4;
     }
+    #summary {
+      margin-top: 1em;
+      background: #fffafc;
+      padding: 1em;
+      border-radius: 8px;
+      border: 1px dashed #f4a3c3;
+    }
   </style>
 </head>
 <body>
@@ -110,6 +117,16 @@
     <input type="number" id="monthly-budget" placeholder="例：30000">
   </label>
   <p id="daily-budget-display"></p>
+
+  <label>節約目標額（円）
+    <input type="number" id="goal-amount" placeholder="例：50000">
+  </label>
+  <label>目標達成期限（日付）
+    <input type="date" id="goal-deadline">
+  </label>
+
+  <div id="summary"></div>
+
   <form id="savings-form">
     <label>日付
       <input type="date" id="date" required>
@@ -142,17 +159,44 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js').then(() => {
-        console.log('Service Worker Registered');
-      });
+      navigator.serviceWorker.register('service-worker.js');
     }
 
     document.getElementById("date").valueAsDate = new Date();
+    document.getElementById("goal-deadline").valueAsDate = new Date(new Date().setFullYear(new Date().getFullYear() + 1));
 
     let dailyBudget = 1000;
     let calendarData = JSON.parse(localStorage.getItem("calendarData") || "[]");
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth();
+
+    function updateSummary() {
+      const goal = parseInt(document.getElementById("goal-amount").value);
+      const deadline = document.getElementById("goal-deadline").value;
+      const today = new Date();
+
+      let yearlyTotal = 0;
+      let weeklyTotal = 0;
+      const now = new Date();
+      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+
+      calendarData.forEach(e => {
+        const entryDate = new Date(e.date);
+        if (entryDate.getFullYear() === today.getFullYear()) {
+          yearlyTotal += e.saved;
+        }
+        if (entryDate >= startOfWeek) {
+          weeklyTotal += e.saved;
+        }
+      });
+
+      let remaining = goal ? goal - yearlyTotal : 0;
+
+      document.getElementById("summary").innerHTML = `
+        <strong>今週の節約合計：</strong>¥${weeklyTotal}<br>
+        <strong>今年の節約合計：</strong>¥${yearlyTotal}<br>
+        ${goal ? `<strong>目標まであと：</strong>¥${remaining}（期限：${deadline || '未設定'}）` : ''}`;
+    }
 
     document.getElementById("monthly-budget").addEventListener("input", function() {
       const monthly = parseInt(this.value);
@@ -161,6 +205,9 @@
         document.getElementById("daily-budget-display").innerText = `1日あたりの予算は約${dailyBudget}円です。`;
       }
     });
+
+    document.getElementById("goal-amount").addEventListener("input", updateSummary);
+    document.getElementById("goal-deadline").addEventListener("input", updateSummary);
 
     document.getElementById("savings-form").addEventListener("submit", function(e) {
       e.preventDefault();
@@ -172,21 +219,17 @@
 
       const record = document.createElement("div");
       record.className = "record";
-      record.innerHTML = `<strong>${date}</strong><br>
-                          カテゴリ: ${category}<br>
-                          節約額: ${saved}円<br>
-                          メモ: ${memo}`;
+      record.innerHTML = `<strong>${date}</strong><br>カテゴリ: ${category}<br>節約額: ¥${saved}<br>メモ: ${memo}`;
       document.getElementById("records").prepend(record);
 
       if (saved > 0) {
         document.getElementById("reward").style.display = "block";
-        setTimeout(() => {
-          document.getElementById("reward").style.display = "none";
-        }, 3000);
+        setTimeout(() => document.getElementById("reward").style.display = "none", 3000);
       }
 
       calendarData.push({ date, category, saved, memo });
       localStorage.setItem("calendarData", JSON.stringify(calendarData));
+      updateSummary();
       document.getElementById("savings-form").reset();
       document.getElementById("date").valueAsDate = new Date();
     });
@@ -258,24 +301,24 @@
 
           cell.onclick = () => {
             document.getElementById("popup-content").innerHTML = `
-              <strong>${entry.date}</strong><br>
-              カテゴリ: ${entry.category}<br>
-              節約額: ${entry.saved}円<br>
-              メモ: ${entry.memo}`;
+              <strong>${entry.date}</strong><br>カテゴリ: ${entry.category}<br>節約額: ¥${entry.saved}<br>メモ: ${entry.memo}`;
             document.getElementById("popup").style.display = "block";
           };
         }
-
         grid.appendChild(cell);
       }
 
       calendar.appendChild(grid);
       calendar.style.display = "block";
+      updateSummary();
     }
 
     function closePopup() {
       document.getElementById("popup").style.display = "none";
     }
+
+    // 初回ロード時にも表示を更新
+    updateSummary();
   </script>
 </body>
 </html>
