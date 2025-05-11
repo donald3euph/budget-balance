@@ -45,6 +45,21 @@
       margin-top: 2em;
       display: none;
     }
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5em;
+    }
+    .calendar-header button {
+      padding: 0.3em 1em;
+      font-size: 0.9em;
+      background: #ff69b4;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
     .calendar {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
@@ -63,7 +78,7 @@
     }
     .stamp {
       position: absolute;
-      top: 4px;
+      bottom: 4px;
       right: 4px;
       width: 24px;
       height: 24px;
@@ -135,7 +150,9 @@
     document.getElementById("date").valueAsDate = new Date();
 
     let dailyBudget = 1000;
-    let calendarData = [];
+    let calendarData = JSON.parse(localStorage.getItem("calendarData") || "[]");
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth();
 
     document.getElementById("monthly-budget").addEventListener("input", function() {
       const monthly = parseInt(this.value);
@@ -169,19 +186,50 @@
       }
 
       calendarData.push({ date, category, saved, memo });
+      localStorage.setItem("calendarData", JSON.stringify(calendarData));
       document.getElementById("savings-form").reset();
       document.getElementById("date").valueAsDate = new Date();
     });
 
     function toggleCalendar() {
       const calendar = document.getElementById("calendar-view");
-      calendar.innerHTML = "<h2>カレンダー収支</h2>";
+      calendar.innerHTML = "";
 
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
+      const header = document.createElement("div");
+      header.className = "calendar-header";
+
+      const prevBtn = document.createElement("button");
+      prevBtn.innerText = "← 前月";
+      prevBtn.onclick = () => {
+        currentMonth--;
+        if (currentMonth < 0) {
+          currentMonth = 11;
+          currentYear--;
+        }
+        toggleCalendar();
+      };
+
+      const nextBtn = document.createElement("button");
+      nextBtn.innerText = "次月 →";
+      nextBtn.onclick = () => {
+        currentMonth++;
+        if (currentMonth > 11) {
+          currentMonth = 0;
+          currentYear++;
+        }
+        toggleCalendar();
+      };
+
+      const title = document.createElement("div");
+      title.innerText = `${currentYear}年 ${currentMonth + 1}月`;
+
+      header.appendChild(prevBtn);
+      header.appendChild(title);
+      header.appendChild(nextBtn);
+      calendar.appendChild(header);
+
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const lastDay = new Date(currentYear, currentMonth + 1, 0);
       const startDay = firstDay.getDay();
       const totalDays = lastDay.getDate();
 
@@ -198,7 +246,7 @@
         cell.className = "day-cell";
         cell.innerText = day;
 
-        const dayString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const entry = calendarData.find(e => e.date === dayString && e.saved > 0);
 
         if (entry) {
@@ -222,7 +270,7 @@
       }
 
       calendar.appendChild(grid);
-      calendar.style.display = calendar.style.display === "none" ? "block" : "none";
+      calendar.style.display = "block";
     }
 
     function closePopup() {
