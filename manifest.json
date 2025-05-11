@@ -1,0 +1,15 @@
+{
+  "name": "節約記録アプリ",
+  "short_name": "節約アプリ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fff0f5",
+  "theme_color": "#fff0f5",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
